@@ -105,6 +105,10 @@ namespace Coffee.UISoftMask
         /// <param name="baseMaterial">Configured Material.</param>
         Material IMaterialModifier.GetModifiedMaterial(Material baseMaterial)
         {
+            if (baseMaterial.shader.name.Contains("(SoftMaskable)")) {
+                SetupMaterialForSoftMask(baseMaterial);
+                return baseMaterial;
+            }
             _softMask = null;
 
             // Unregister the previous material
@@ -126,26 +130,30 @@ namespace Coffee.UISoftMask
             );
 
             // Generate soft maskable material.
-            var modifiedMaterial = MaterialCache.Register(baseMaterial, _effectMaterialHash, mat =>
-            {
+            var modifiedMaterial = MaterialCache.Register(baseMaterial, _effectMaterialHash, mat => {
                 mat.shader = Shader.Find(string.Format("Hidden/{0} (SoftMaskable)", mat.shader.name));
-#if UNITY_EDITOR
-                mat.EnableKeyword("SOFTMASK_EDITOR");
-#endif
-                mat.SetTexture(s_SoftMaskTexId, softMask.softMaskBuffer);
-                mat.SetInt(s_StencilCompId, m_UseStencil ? (int) CompareFunction.Equal : (int) CompareFunction.Always);
-
-                var root = MaskUtilities.FindRootSortOverrideCanvas(transform);
-                var stencil = MaskUtilities.GetStencilDepth(transform, root);
-                mat.SetVector(s_MaskInteractionId, new Vector4(
-                    1 <= stencil ? (m_MaskInteraction >> 0 & 0x3) : 0,
-                    2 <= stencil ? (m_MaskInteraction >> 2 & 0x3) : 0,
-                    3 <= stencil ? (m_MaskInteraction >> 4 & 0x3) : 0,
-                    4 <= stencil ? (m_MaskInteraction >> 6 & 0x3) : 0
-                ));
+                SetupMaterialForSoftMask(mat);
             });
 
             return modifiedMaterial;
+        }
+
+        private void SetupMaterialForSoftMask(Material mat)
+        {
+#if UNITY_EDITOR
+            mat.EnableKeyword("SOFTMASK_EDITOR");
+#endif
+            mat.SetTexture(s_SoftMaskTexId, softMask.softMaskBuffer);
+            mat.SetInt(s_StencilCompId, m_UseStencil ? (int)CompareFunction.Equal : (int)CompareFunction.Always);
+
+            var root = MaskUtilities.FindRootSortOverrideCanvas(transform);
+            var stencil = MaskUtilities.GetStencilDepth(transform, root);
+            mat.SetVector(s_MaskInteractionId, new Vector4(
+                1 <= stencil ? (m_MaskInteraction >> 0 & 0x3) : 0,
+                2 <= stencil ? (m_MaskInteraction >> 2 & 0x3) : 0,
+                3 <= stencil ? (m_MaskInteraction >> 4 & 0x3) : 0,
+                4 <= stencil ? (m_MaskInteraction >> 6 & 0x3) : 0
+            ));
         }
 
         /// <summary>
